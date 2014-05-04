@@ -1,4 +1,4 @@
 
-pipes - NO
-redirect - NO
-background - NO
+pipes - NOT YET
+redirect - NOT YET
+background - NOT YET
