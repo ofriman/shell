@@ -1,4 +1,5 @@
 
-pipes - NOT YET
-redirect - NOT YET
-background - NOT YET
+pipes - GOOD
+redirect - GOOD
+background - GOOD
+erorlog - NOT YET

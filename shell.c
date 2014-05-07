@@ -1,171 +1,248 @@
 #include <stdio.h>
 #include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <string.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
-#define INPUT_STRING_SIZE 80
-#define NORMAL 	00
-#define OUTPUT_REDIRECTION 11
-#define INPUT_REDIRECTION 22
-#define PIPELINE 33
-#define BACKGROUND 44
-#define OUTPUT_APP 55
-
-
-int SToken(char *, char **);
-int split(char *,char *, char *,char *temp);
+void SToken(char *, char **);
+int split(char *,char *,int *);
+void fixed(char *);
 int execute(char *);
-
 
 int main()
 {
-  char *input;
+  char *line;
   size_t length = 256;
-  input = (char*)malloc(sizeof(char)*length);
+  line = (char*)malloc(sizeof(char)*length);
   while(1)
   {
     printf("$ ");
-    getline( &input, &length, stdin); 
-    if(strcmp(input, "exit\n") == 0)
+    getline( &line, &length, stdin); 
+    if(strcmp(line, "exit\n") == 0)
       exit(0);
-    execute(input);  
+    execute(line);  
   }
   return 0;
 }
-int SToken(char *input, char **command)
+void SToken(char *line, char **command)
 {
-  int size = 0;
-  while (*input != '\0')
+  while (*line != '\0' && *line != '\n')
   {
-    *command = input ;
-    size++ ;
-    while(*input != ' ' && *input != '\t' && *input != '\0' && *input != '\n')
+    *command = line ;
+    while(*line != ' ' && *line != '\0' && *line != '\n')
     {
-      input++;
+      line++;
     }
-    while(*input == ' ' || *input == '\t' || *input == '\n')
+    while(*line == ' ')
     {
-      *input ='\0';
-      input++;
+      *line ='\0';
+      line++;
     }
-  command++;
+    command++;
   }
   *command = '\0';
-  return size;
 }
-int split(char *input,char *begin, char *end,char *temp)
+int split(char *line,char *cmd,int *ptr)
+{
+  int mode = 0;
+  if (*(line+*ptr)!= '\0' &&*(line+*ptr)!= '\n')
   {
-  int flag =1;
-  int ans = 0;
-  while(*input != '|' && *input != '>' && *input != '<' && *input != '&' && *input!='\0')
-  {
-    *begin=*input;
-    begin++;
-    input++;
-  }
-  switch(*input)
-  {
-    case '&':
-      ans = 44;
-      break;
-    case '>':
-      ans = 11;
-      input++;
-      if(*input == '>')
-      {
-	ans = 55;
-	input++;
-      }
-      break;
-    case '<':
-      ans = 22;
-      break;
-    case '|':
-      ans = 33;
-      break;
-  }
-  input++;
-  if(ans!=0){
-    if(ans == 11) input--;
-
-    if(ans==11||ans==22||ans==33||ans==55)
+    while(*(line+*ptr) == ' ')
+      *ptr=*ptr+1;
+    while(*(line+*ptr) != '|' && *(line+*ptr) != '>' && *(line+*ptr) != '<' && *(line+*ptr) != '&' && *(line+*ptr) != '\0' && *(line+*ptr)!= '\n' )
     {
-      while (*input == ' '||*input == '\t')
-      {
-	input++;
-      }
+      *cmd=*(line+*ptr);
+      cmd++;
+      *ptr=*ptr+1;
     }
-    while(*input != '\t' && *input != '\0' && *input != '\n')
+    switch(*(line+*ptr))
     {
-      *temp = *input ;
-      temp++;
-
-      if(*input != '|' && *input != '>' && *input != '<' && *input != '&' && *input!='\0'&&flag)
-      {
-	*end = *input ;
-	end++;
-      }
-      else
-      flag=0;
-      input++;
+      case '&':
+	mode = 44;
+	*ptr=*ptr+1;
+	break;
+      case '>':
+	mode = 11;
+	*ptr=*ptr+1;
+	if(*(line+*ptr) == '>')
+	{
+	  mode = 55;
+	  *ptr=*ptr+1;
+	}
+	break;
+      case '<':
+	mode = 22;
+	*ptr=*ptr+1;
+	break;
+      case '|':
+	mode = 33;
+	*ptr=*ptr+1;
+	break;
     }
   }
-  *end='\0';
-  *temp='\0';
-  *begin='\0';
-  return ans;
+  *cmd='\0';
+  return mode;
+}
+void fixed(char *line)
+{
+  while( *line!= ' ' && *line!= '\0' &&*line!= '\n')
+  {
+   line++;
+  }
+   while(*line!='\0')
+  {
+    *line='\0';
+    line++;
+  }
 }
 
-int execute(char *input)
-  {
-  FILE *fp;
-  char begin[256], end[256], temp[256],*command[256],*command1[256]; 
-  int *status1,pid,commandSize=0,i;
-  int mode=0;
-  while(strcmp(input,end))
-  {
-    mode = split(input,begin,end,temp);
-    commandSize=SToken(begin,command);
-    strcpy(input,temp);
+int execute(char *line)
+{
+  char *cur,*input,*output,*command[256];
+  int fd1,fd2,mode=0,outputmode,pipemode=0,pipemode1=0,index=0,*ptr,myPipe[2],myPipe1[2];
+  pid_t pid;
+  ptr = &index;
+  cur = (char*)malloc(sizeof(char)*256);
+  input = (char*)malloc(sizeof(char)*256);
+  output = (char*)malloc(sizeof(char)*256);
+  mode = split(line,cur,ptr);
+  while (*cur!='\0'){
+    
+    while(mode==22||mode==11||mode==55){ 
+      if(mode==22){
+	  mode = split(line,input,ptr);
+      }
+      else{
+	  outputmode = mode ;
+	  mode = split(line,output,ptr);
+      }
+    }
+    if(mode == 33 && pipemode==0 )
+    {
+      pipemode = 1;
+       pipe(myPipe);	
+    }
+    else if(mode == 33)
+    {
+       pipemode1=1;
+       pipe(myPipe1);	
+    }
     pid = fork();
     if( pid < 0)
     {
-      printf("Error occured");
-      exit(-1);
+    printf("Error occured");
+    exit(-1);
     }
     else if(pid == 0)
     {
-      switch(mode)
-      {
-	case 11:
-	  fp = fopen(end, "w+");
-	  dup2(fileno(fp), 1);
+      // input output close pipes
+     	if(pipemode == 2)
+	{
+	  close(myPipe[1]); 
+	}
+	if(pipemode1 == 2)
+	{
+	  close(myPipe1[1]); 
+	}      
+      	if(pipemode == 1)
+	{
+	 close(myPipe[0]); 
+	}
+	if(pipemode1 == 1)
+	{
+	   close(myPipe1[0]); 
+	}      
+      
+      
+      //input
+	if(pipemode == 2)
+	{
+	  dup2(myPipe[0],STDIN_FILENO);
+	  close(myPipe[0]); 
+	}
+	else if (pipemode1 == 2)
+	{
+	  dup2(myPipe1[0],STDIN_FILENO);
+	  close(myPipe1[0]); 
+	}
+	else if (*input!='\0')
+	{	  
+	fixed(input);
+	fd1 = open(input,O_RDONLY,0);
+	dup2(fd1, STDIN_FILENO);
+	close(fd1);	  
+	}
+	
+      //output
+        if(pipemode == 1)
+       {
+	  dup2(myPipe[1],STDOUT_FILENO);
+	  close(myPipe[1]); 
+       }
+       else if(pipemode1 ==1){
+	  dup2(myPipe1[1],STDOUT_FILENO);
+	  close(myPipe1[1]); 	 
+       }
+       else if (*output!='\0')
+       {
+	  fixed(output);
+	  switch(outputmode)
+	  {
+	  case 11:
+	  fd2   = open(output,O_WRONLY | O_CREAT | O_TRUNC, 0600);
+	  dup2(fd2, STDOUT_FILENO);
+	  close(fd2);	  
 	  break;
-	case 55:
-	  fp = fopen(end, "a");
-	  dup2(fileno(fp), 1);
+	  case 55:
+	  fd2   = open(output,O_WRONLY | O_APPEND, 0600);
+	  dup2(fd2, STDOUT_FILENO);
+	  close(fd2);	
 	  break;
-	case 22:
-	  fp = fopen(end, "r");
-	  dup2(fileno(fp), 0);
-	  break;
+       }
+       
       }
-      execvp(*command, command);  
+
+     
+     SToken(cur,command);
+      execvp(*command, command); 
     }
     else
     {
-      if(mode == 44)
-      ;
-      else
-      {
-      if(mode ==0)
-	waitpid(pid, &status1, 0);
-      else
-	waitpid(1, &status1, 0);
-      }
+    if(mode == 44)
+    ;
+    else
+    waitpid(pid, NULL, 0); 
+    *output='\0';
+    *input='\0';
+    outputmode=0;
+    mode=0;
+
+    if(pipemode ==1)
+    {
+      pipemode = 2;
+      close(myPipe[1]);
+    }
+    else if(pipemode ==2)
+    {
+      pipemode=0;
+      close(myPipe[0]);
+    }
+    if(pipemode1 ==1)
+    {
+      pipemode1 = 2;
+     close(myPipe1[1]); 
+    }
+    else if(pipemode1 ==2)
+    {
+      pipemode1=0;
+     close(myPipe1[0]); 
+    }
+
+    mode = split(line,cur,ptr);
     }
   }
-
   return 0;
 }
