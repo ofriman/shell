@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <string.h>
+#include <errno.h>
 
 void SToken(char *, char **);
 int split(char *,char *,int *);
@@ -98,19 +100,17 @@ void fixed(char *line)
     line++;
   }
 }
-
 int execute(char *line)
 {
   char *cur,*input,*output,*command[256];
-  int fd1,fd2,mode=0,outputmode,pipemode=0,pipemode1=0,index=0,*ptr,myPipe[2],myPipe1[2];
+  int fd1,fd2,mode=0,outputmode,pipemode=0,pipemode1=0,index=0,*ptr,myPipe[2][2];
   pid_t pid;
   ptr = &index;
   cur = (char*)malloc(sizeof(char)*256);
   input = (char*)malloc(sizeof(char)*256);
   output = (char*)malloc(sizeof(char)*256);
   mode = split(line,cur,ptr);
-  while (*cur!='\0'){
-    
+  while (*cur!='\0'){ 
     while(mode==22||mode==11||mode==55){ 
       if(mode==22){
 	  mode = split(line,input,ptr);
@@ -123,12 +123,20 @@ int execute(char *line)
     if(mode == 33 && pipemode==0 )
     {
       pipemode = 1;
-       pipe(myPipe);	
+      if( pipe(myPipe[0]) == -1 )
+      {
+          printf( "pipe : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
     }
     else if(mode == 33)
     {
        pipemode1=1;
-       pipe(myPipe1);	
+     if(  pipe(myPipe[1]) == -1)
+             {
+          printf( "pipe : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
     }
     pid = fork();
     if( pid < 0)
@@ -137,54 +145,77 @@ int execute(char *line)
     exit(-1);
     }
     else if(pid == 0)
-    {
-      // input output close pipes
-     	if(pipemode == 2)
-	{
-	  close(myPipe[1]); 
-	}
-	if(pipemode1 == 2)
-	{
-	  close(myPipe1[1]); 
-	}      
-      	if(pipemode == 1)
-	{
-	 close(myPipe[0]); 
-	}
-	if(pipemode1 == 1)
-	{
-	   close(myPipe1[0]); 
-	}      
-      
-      
-      //input
+    {          
 	if(pipemode == 2)
 	{
-	  dup2(myPipe[0],STDIN_FILENO);
-	  close(myPipe[0]); 
+	 if( dup2(myPipe[0][0],STDIN_FILENO)==-1)
+	   	         {
+          printf( "dup2 : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
+	if(  close(myPipe[0][0]) == -1)
+	  	   	         {
+          printf( "close : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
 	}
 	else if (pipemode1 == 2)
 	{
-	  dup2(myPipe1[0],STDIN_FILENO);
-	  close(myPipe1[0]); 
+	  if(dup2(myPipe[1][0],STDIN_FILENO))
+	    	         {
+          printf( "dup2 : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
+	 if( close(myPipe[1][0])==-1)
+	   	  	   	         {
+          printf( "close : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
 	}
 	else if (*input!='\0')
 	{	  
 	fixed(input);
 	fd1 = open(input,O_RDONLY,0);
-	dup2(fd1, STDIN_FILENO);
-	close(fd1);	  
-	}
-	
-      //output
+	if(fd1 == -1)
+	  	         {
+          printf( "open : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
+	if(dup2(fd1, STDIN_FILENO))
+	  	         {
+          printf( "dup2 : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
+	if(close(fd1)==-1)
+	  	  	   	         {
+          printf( "close : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
+	}	
         if(pipemode == 1)
        {
-	  dup2(myPipe[1],STDOUT_FILENO);
-	  close(myPipe[1]); 
+	  if(dup2(myPipe[0][1],STDOUT_FILENO)==-1)
+	    	         {
+          printf( "dup2 : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
+	 if( close(myPipe[0][1])==-1)
+	   	  	   	         {
+          printf( "close : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
        }
        else if(pipemode1 ==1){
-	  dup2(myPipe1[1],STDOUT_FILENO);
-	  close(myPipe1[1]); 	 
+	if( dup2(myPipe[1][1],STDOUT_FILENO)==-1)
+	  	         {
+          printf( "dup2 : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
+	 if( close(myPipe[1][1])==-1)
+	   	  	   	         {
+          printf( "close : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
        }
        else if (*output!='\0')
        {
@@ -193,21 +224,48 @@ int execute(char *line)
 	  {
 	  case 11:
 	  fd2   = open(output,O_WRONLY | O_CREAT | O_TRUNC, 0600);
-	  dup2(fd2, STDOUT_FILENO);
-	  close(fd2);	  
+	  if(fd2==-1)
+	  	         {
+          printf( "open : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
+	if(  dup2(fd2, STDOUT_FILENO)==-1)
+	  	         {
+          printf( "dup2 : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
+	if(  close(fd2)==-1)
+	  	   	         {
+          printf( "close : %s\n", strerror( errno ) );
+          exit( 1 );
+      }	  
 	  break;
 	  case 55:
 	  fd2   = open(output,O_WRONLY | O_APPEND, 0600);
-	  dup2(fd2, STDOUT_FILENO);
-	  close(fd2);	
+	  if(fd2==-1)
+	    	         {
+          printf( "open : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
+	  if(dup2(fd2, STDOUT_FILENO)==-1)
+	    	         {
+          printf( "dup2 : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
+	 if( close(fd2)==-1)
+	   	  	   	         {
+          printf( "close : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
 	  break;
        }
-       
       }
-
-     
      SToken(cur,command);
-      execvp(*command, command); 
+      if(execvp(*command, command)==-1)
+		         {
+          printf( "execvp %s : %s\n",*command, strerror( errno ) );
+          exit( 1 );
+      }
     }
     else
     {
@@ -219,26 +277,31 @@ int execute(char *line)
     *input='\0';
     outputmode=0;
     mode=0;
-
     if(pipemode ==1)
     {
       pipemode = 2;
-      close(myPipe[1]);
+     if( close(myPipe[0][1])==-1)
+       	  	   	         {
+          printf( "d close : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
     }
     else if(pipemode ==2)
     {
       pipemode=0;
-      close(myPipe[0]);
     }
     if(pipemode1 ==1)
     {
       pipemode1 = 2;
-     close(myPipe1[1]); 
+    if( close(myPipe[1][1])==-1)
+      	  	   	         {
+          printf( "b close : %s\n", strerror( errno ) );
+          exit( 1 );
+      }
     }
     else if(pipemode1 ==2)
     {
       pipemode1=0;
-     close(myPipe1[0]); 
     }
 
     mode = split(line,cur,ptr);
