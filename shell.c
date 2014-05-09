@@ -109,8 +109,7 @@ int execute(char *line)
   input = (char*)malloc(sizeof(char)*256);
   output = (char*)malloc(sizeof(char)*256);
   mode = split(line,cur,ptr);
-  while (*cur!='\0'){
-    
+  while (*cur!='\0'){   
     while(mode==22||mode==11||mode==55){ 
       if(mode==22){
 	  mode = split(line,input,ptr);
@@ -128,7 +127,6 @@ int execute(char *line)
           printf( "pipe : %s\n", strerror( errno ) );
           exit( 1 );
       }
-      
     }
     else if(mode == 33)
     {
@@ -139,12 +137,11 @@ int execute(char *line)
           exit( 1 );
       }
     }
-
     pid = fork();
     if( pid < 0)
     {
-    printf("Error occured");
-    exit(-1);
+          printf( "pid : %s\n", strerror( errno ) );
+          exit( 1 );
     }
     else if(pid == 0)
     {
@@ -165,7 +162,7 @@ int execute(char *line)
 	}
 	else if (pipemode1 == 2)
 	{
-	  if(dup2(myPipe[1][0],STDIN_FILENO))
+	  if(dup2(myPipe[1][0],STDIN_FILENO)==-1)
 	    	         {
           printf( "dup2 : %s\n", strerror( errno ) );
           exit( 1 );
@@ -185,7 +182,7 @@ int execute(char *line)
           printf( "open : %s\n", strerror( errno ) );
           exit( 1 );
       }
-	if(dup2(fd1, STDIN_FILENO))
+	if(dup2(fd1, STDIN_FILENO)==-1)
 	  	         {
           printf( "dup2 : %s\n", strerror( errno ) );
           exit( 1 );
@@ -259,16 +256,13 @@ int execute(char *line)
           exit( 1 );
       }
 	 if( close(fd2)==-1)
-	   	  	   	         {
+	 {
           printf( "close : %s\n", strerror( errno ) );
           exit( 1 );
       }
 	  break;
-       }
-       
+       }      
       }
-
-     
      SToken(cur,command);
       if(execvp(*command, command)==-1)
 		         {
@@ -281,12 +275,15 @@ int execute(char *line)
     if(mode == 44)
     ;
     else
-    waitpid(pid, NULL, 0); 
+    if(waitpid(pid, NULL, 0)==-1)
+    {
+                printf( "waitpid : %s\n", strerror( errno ) );
+          exit( 1 );
+    }
     *output='\0';
     *input='\0';
     outputmode=0;
     mode=0;
-
     if(pipemode ==1)
     {
       pipemode = 2;
@@ -299,7 +296,6 @@ int execute(char *line)
     else if(pipemode ==2)
     {
       pipemode=0;
-
     }
     if(pipemode1 ==1)
     {
@@ -313,9 +309,7 @@ int execute(char *line)
     else if(pipemode1 ==2)
     {
       pipemode1=0;
-
     }
-
     mode = split(line,cur,ptr);
     }
   }
