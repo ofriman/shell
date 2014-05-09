@@ -8,7 +8,6 @@
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
-
 void SToken(char *, char **);
 int split(char *,char *,int *);
 void fixed(char *);
@@ -34,11 +33,11 @@ void SToken(char *line, char **command)
   while (*line != '\0' && *line != '\n')
   {
     *command = line ;
-    while(*line != ' ' && *line != '\0' && *line != '\n')
+    while(*line != ' ' &&*line != '\t' && *line != '\0' && *line != '\n')
     {
       line++;
     }
-    while(*line == ' ')
+    while(*line == ' '|| *line == '\t' )
     {
       *line ='\0';
       line++;
@@ -52,7 +51,7 @@ int split(char *line,char *cmd,int *ptr)
   int mode = 0;
   if (*(line+*ptr)!= '\0' &&*(line+*ptr)!= '\n')
   {
-    while(*(line+*ptr) == ' ')
+    while(*(line+*ptr) == ' '||*(line+*ptr)  == '\t' )
       *ptr=*ptr+1;
     while(*(line+*ptr) != '|' && *(line+*ptr) != '>' && *(line+*ptr) != '<' && *(line+*ptr) != '&' && *(line+*ptr) != '\0' && *(line+*ptr)!= '\n' )
     {
@@ -90,7 +89,7 @@ int split(char *line,char *cmd,int *ptr)
 }
 void fixed(char *line)
 {
-  while( *line!= ' ' && *line!= '\0' &&*line!= '\n')
+  while( *line!= ' ' && *line!= '\0' &&*line!= '\n'&&*line != '\t' )
   {
    line++;
   }
@@ -110,7 +109,8 @@ int execute(char *line)
   input = (char*)malloc(sizeof(char)*256);
   output = (char*)malloc(sizeof(char)*256);
   mode = split(line,cur,ptr);
-  while (*cur!='\0'){ 
+  while (*cur!='\0'){
+    
     while(mode==22||mode==11||mode==55){ 
       if(mode==22){
 	  mode = split(line,input,ptr);
@@ -128,6 +128,7 @@ int execute(char *line)
           printf( "pipe : %s\n", strerror( errno ) );
           exit( 1 );
       }
+      
     }
     else if(mode == 33)
     {
@@ -138,6 +139,7 @@ int execute(char *line)
           exit( 1 );
       }
     }
+
     pid = fork();
     if( pid < 0)
     {
@@ -145,7 +147,9 @@ int execute(char *line)
     exit(-1);
     }
     else if(pid == 0)
-    {          
+    {
+           
+      //input
 	if(pipemode == 2)
 	{
 	 if( dup2(myPipe[0][0],STDIN_FILENO)==-1)
@@ -191,7 +195,9 @@ int execute(char *line)
           printf( "close : %s\n", strerror( errno ) );
           exit( 1 );
       }
-	}	
+	}
+	
+      //output
         if(pipemode == 1)
        {
 	  if(dup2(myPipe[0][1],STDOUT_FILENO)==-1)
@@ -259,7 +265,10 @@ int execute(char *line)
       }
 	  break;
        }
+       
       }
+
+     
      SToken(cur,command);
       if(execvp(*command, command)==-1)
 		         {
@@ -277,6 +286,7 @@ int execute(char *line)
     *input='\0';
     outputmode=0;
     mode=0;
+
     if(pipemode ==1)
     {
       pipemode = 2;
@@ -289,6 +299,7 @@ int execute(char *line)
     else if(pipemode ==2)
     {
       pipemode=0;
+
     }
     if(pipemode1 ==1)
     {
@@ -302,6 +313,7 @@ int execute(char *line)
     else if(pipemode1 ==2)
     {
       pipemode1=0;
+
     }
 
     mode = split(line,cur,ptr);
