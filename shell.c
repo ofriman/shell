@@ -12,6 +12,7 @@ void SToken(char *, char **);
 int split(char *,char *,int *);
 void fixed(char *);
 int execute(char *);
+FILE *eror_log;
 
 int main()
 {
@@ -124,7 +125,10 @@ int execute(char *line)
       pipemode = 1;
       if( pipe(myPipe[0]) == -1 )
       {
-          printf( "pipe : %s\n", strerror( errno ) );
+	printf( "pipe : %s\n", strerror( errno ) );
+	eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"pipe :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
     }
@@ -134,6 +138,9 @@ int execute(char *line)
      if(  pipe(myPipe[1]) == -1)
              {
           printf( "pipe : %s\n", strerror( errno ) );
+     	eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"pipe :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
     }
@@ -141,6 +148,9 @@ int execute(char *line)
     if( pid < 0)
     {
           printf( "pid : %s\n", strerror( errno ) );
+	eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"pid :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
     }
     else if(pid == 0)
@@ -152,11 +162,17 @@ int execute(char *line)
 	 if( dup2(myPipe[0][0],STDIN_FILENO)==-1)
 	   	         {
           printf( "dup2 : %s\n", strerror( errno ) );
+	 	eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"dup2 :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
 	if(  close(myPipe[0][0]) == -1)
 	  	   	         {
           printf( "close : %s\n", strerror( errno ) );
+		eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"close :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
 	}
@@ -165,11 +181,17 @@ int execute(char *line)
 	  if(dup2(myPipe[1][0],STDIN_FILENO)==-1)
 	    	         {
           printf( "dup2 : %s\n", strerror( errno ) );
+	  	eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"dup2 :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
 	 if( close(myPipe[1][0])==-1)
 	   	  	   	         {
           printf( "close : %s\n", strerror( errno ) );
+	 	eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"close :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
 	}
@@ -180,16 +202,25 @@ int execute(char *line)
 	if(fd1 == -1)
 	  	         {
           printf( "open : %s\n", strerror( errno ) );
+		eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"open :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
 	if(dup2(fd1, STDIN_FILENO)==-1)
 	  	         {
           printf( "dup2 : %s\n", strerror( errno ) );
+		eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"dup2 :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
 	if(close(fd1)==-1)
 	  	  	   	         {
           printf( "close : %s\n", strerror( errno ) );
+		eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"close :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
 	}
@@ -200,11 +231,17 @@ int execute(char *line)
 	  if(dup2(myPipe[0][1],STDOUT_FILENO)==-1)
 	    	         {
           printf( "dup2 : %s\n", strerror( errno ) );
+	  	eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"dup2 :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
 	 if( close(myPipe[0][1])==-1)
 	   	  	   	         {
           printf( "close : %s\n", strerror( errno ) );
+	 	eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"close :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
        }
@@ -212,11 +249,17 @@ int execute(char *line)
 	if( dup2(myPipe[1][1],STDOUT_FILENO)==-1)
 	  	         {
           printf( "dup2 : %s\n", strerror( errno ) );
+		eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"dup2 :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
 	 if( close(myPipe[1][1])==-1)
 	   	  	   	         {
           printf( "close : %s\n", strerror( errno ) );
+	 	eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"close :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
        }
@@ -230,16 +273,25 @@ int execute(char *line)
 	  if(fd2==-1)
 	  	         {
           printf( "open : %s\n", strerror( errno ) );
+	  	eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"open :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
 	if(  dup2(fd2, STDOUT_FILENO)==-1)
 	  	         {
           printf( "dup2 : %s\n", strerror( errno ) );
+		eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"dup2 :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
 	if(  close(fd2)==-1)
 	  	   	         {
           printf( "close : %s\n", strerror( errno ) );
+		eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"close :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }	  
 	  break;
@@ -248,16 +300,25 @@ int execute(char *line)
 	  if(fd2==-1)
 	    	         {
           printf( "open : %s\n", strerror( errno ) );
+	  	eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"open :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
 	  if(dup2(fd2, STDOUT_FILENO)==-1)
 	    	         {
           printf( "dup2 : %s\n", strerror( errno ) );
+	  	eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"dup2 :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
 	 if( close(fd2)==-1)
 	 {
           printf( "close : %s\n", strerror( errno ) );
+	  	eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"close :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
 	  break;
@@ -267,6 +328,9 @@ int execute(char *line)
       if(execvp(*command, command)==-1)
 		         {
           printf( "execvp %s : %s\n",*command, strerror( errno ) );
+      	eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"execvp :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
     }
@@ -278,6 +342,9 @@ int execute(char *line)
     if(waitpid(pid, NULL, 0)==-1)
     {
                 printf( "waitpid : %s\n", strerror( errno ) );
+			eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"waitpid :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
     }
     *output='\0';
@@ -289,7 +356,10 @@ int execute(char *line)
       pipemode = 2;
      if( close(myPipe[0][1])==-1)
        	  	   	         {
-          printf( "d close : %s\n", strerror( errno ) );
+          printf( "close : %s\n", strerror( errno ) );
+     	eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"close :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
     }
@@ -302,7 +372,10 @@ int execute(char *line)
       pipemode1 = 2;
     if( close(myPipe[1][1])==-1)
       	  	   	         {
-          printf( "b close : %s\n", strerror( errno ) );
+          printf( "close : %s\n", strerror( errno ) );
+    	eror_log = fopen ("log_error.txt", "a");
+	fprintf(eror_log,"close :%s\n",strerror(errno));
+	fclose(eror_log);
           exit( 1 );
       }
     }
